@@ -2951,7 +2951,8 @@ EXPORTED int mboxlist_allmbox(const char *prefix, mboxlist_cb *proc, void *rock,
     return r;
 }
 
-EXPORTED int mboxlist_mboxtree(const char *mboxname, mboxlist_cb *proc, void *rock, int flags)
+EXPORTED int mboxlist_mboxtree(const char *mboxname,
+                               mboxlist_cb *proc, void *rock, int flags)
 {
     struct allmb_rock mbrock = { NULL, proc, rock, flags };
     int r = 0;
@@ -2959,13 +2960,15 @@ EXPORTED int mboxlist_mboxtree(const char *mboxname, mboxlist_cb *proc, void *ro
     init_internal();
 
     if (!(flags & MBOXTREE_SKIP_ROOT)) {
-        r = cyrusdb_forone(mbdb, mboxname, strlen(mboxname), allmbox_p, allmbox_cb, &mbrock, 0);
+        r = cyrusdb_forone(mbdb, mboxname, strlen(mboxname),
+                           allmbox_p, allmbox_cb, &mbrock, 0);
         if (r) goto done;
     }
 
     if (!(flags & MBOXTREE_SKIP_CHILDREN)) {
-        char *prefix = strconcat(mboxname, ".", (char *)NULL);
-        r = cyrusdb_foreach(mbdb, prefix, strlen(prefix), allmbox_p, allmbox_cb, &mbrock, 0);
+        char *prefix = strconcat(mboxname, INT_HIERSEP_STR, (char *)NULL);
+        r = cyrusdb_foreach(mbdb, prefix, strlen(prefix),
+                            allmbox_p, allmbox_cb, &mbrock, 0);
         free(prefix);
         if (r) goto done;
     }
@@ -2975,13 +2978,15 @@ EXPORTED int mboxlist_mboxtree(const char *mboxname, mboxlist_cb *proc, void *ro
         const char *p = strchr(mboxname, '!');
         const char *dp = config_getstring(IMAPOPT_DELETEDPREFIX);
         if (p) {
-            buf_printf(&buf, "%.*s!%s.%s", (int)(p-mboxname), mboxname, dp, p+1);
+            buf_printf(&buf, "%.*s!%s%c%s",
+                       (int)(p-mboxname), mboxname, dp, INT_HIERSEP_CHAR, p+1);
         }
         else {
-            buf_printf(&buf, "%s.%s", dp, mboxname);
+            buf_printf(&buf, "%s%c%s", dp, INT_HIERSEP_CHAR, mboxname);
         }
         const char *prefix = buf_cstring(&buf);
-        r = cyrusdb_foreach(mbdb, prefix, strlen(prefix), allmbox_p, allmbox_cb, &mbrock, 0);
+        r = cyrusdb_foreach(mbdb, prefix, strlen(prefix),
+                            allmbox_p, allmbox_cb, &mbrock, 0);
         buf_free(&buf);
         if (r) goto done;
     }
@@ -3283,7 +3288,8 @@ static int mboxlist_do_find(struct find_rock *rock, const strarray_t *patterns)
         } else
             inboxuser = userid;
         snprintf(inbox+domainlen, sizeof(inbox)-domainlen,
-                 "user.%.*s.INBOX.", (int)userlen, inboxuser);
+                 "%s%.*s%cINBOX%c", INT_USER_PREFIX,
+                 (int)userlen, inboxuser, INT_HIERSEP_CHAR, INT_HIERSEP_CHAR);
         free(tmpuser);
         inboxlen = strlen(inbox) - 7;
     }
