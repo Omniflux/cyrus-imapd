@@ -49,10 +49,7 @@
 
 #define MAX_NAMESPACE_PREFIX 40
 
-/* placeholder character for '.' in mailboxnames */
-#define DOTCHAR '^'
-
-#define INT_HIERSEP_STR      "\x1f"
+#define INT_HIERSEP_STR      "\x1F"  /* unit separator (US) */
 #define INT_HIERSEP_CHAR     INT_HIERSEP_STR[0]
 #define INT_USER_PREFIX      "user" INT_HIERSEP_STR
 #define INT_USER_PREFIX_LEN  5
