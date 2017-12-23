@@ -496,6 +496,9 @@ EXPORTED mbname_t *mbname_from_extname(const char *extname,
     if (!*extname)
         return mbname; // empty string, *sigh*
 
+    if (strchr(extname, INT_HIERSEP_CHAR))
+        return mbname; // contains unit sep
+
     sepstr[0] = ns->hier_sep;
     sepstr[1] = '\0';
 
