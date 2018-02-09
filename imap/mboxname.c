@@ -437,7 +437,7 @@ EXPORTED mbname_t *mbname_from_intname(const char *intname)
 
     mbname->intname = xstrdup(intname); // may as well cache it
 
-    p = strchr(intname, '!');
+    p = strchr(intname, INT_DOMAINSEP_CHAR);
     if (p) {
         mbname->domain = xstrndup(intname, p - intname);
         if (!strcmpsafe(mbname->domain, config_defdomain)) {
@@ -730,7 +730,7 @@ EXPORTED const char *mbname_intname(const mbname_t *mbname)
 
     if (mbname->domain) {
         buf_appendcstr(&buf, mbname->domain);
-        buf_putc(&buf, '!');
+        buf_putc(&buf, INT_DOMAINSEP_CHAR);
     }
 
     if (mbname->is_deleted) {
@@ -1469,7 +1469,7 @@ HIDDEN int mboxname_policycheck(const char *name)
 
     /* find the virtual domain, if any.  We don't sanity check domain
        names yet - maybe we should */
-    p = strchr(name, '!');
+    p = strchr(name, INT_DOMAINSEP_CHAR);
     if (p) {
         if (config_virtdomains) {
             name = p + 1;
@@ -1567,7 +1567,7 @@ HIDDEN int mboxname_policycheck(const char *name)
             name++;             /* Skip over terminating '-' */
         }
         else {
-            if (!(strchr(GOODCHARS, *name) || (hasdom && *name == '!')))
+            if (!(strchr(GOODCHARS, *name) || (hasdom && *name == INT_DOMAINSEP_CHAR)))
                 return IMAP_MAILBOX_BADNAME;
             name++;
             sawutf7 = 0;
@@ -1862,7 +1862,7 @@ EXPORTED void mboxname_todeleted(const char *name, char *result, int withtime)
 
     xstrncpy(result, name, MAX_MAILBOX_BUFFER);
 
-    if (config_virtdomains && (p = strchr(name, '!')))
+    if (config_virtdomains && (p = strchr(name, INT_DOMAINSEP_CHAR)))
         domainlen = p - name + 1;
 
     if (withtime) {
@@ -1882,7 +1882,7 @@ EXPORTED int mboxname_make_parent(char *name)
     int domainlen = 0;
     char *p;
 
-    if (config_virtdomains && (p = strchr(name, '!')))
+    if (config_virtdomains && (p = strchr(name, INT_DOMAINSEP_CHAR)))
         domainlen = p - name + 1;
 
     if (!name[0] || !strcmp(name+domainlen, "user"))

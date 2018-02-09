@@ -630,7 +630,7 @@ EXPORTED int quota_findroot(char *ret, size_t retlen, const char *name)
     strlcpy(ret, name, retlen);
 
     /* find the start of the unqualified mailbox name */
-    mbox = (config_virtdomains && (p = strchr(ret, '!'))) ? p+1 : ret;
+    mbox = (config_virtdomains && (p = strchr(ret, INT_DOMAINSEP_CHAR))) ? p+1 : ret;
     tail = mbox + strlen(mbox);
 
     while (cyrusdb_fetch(qdb, ret, strlen(ret), NULL, NULL, NULL)) {

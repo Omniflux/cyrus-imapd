@@ -245,7 +245,7 @@ static int index_one(const char *name, int blocking)
         struct buf attrib = BUF_INITIALIZER;
         int domainlen = 0;
 
-        if (config_virtdomains && (p = strchr(name, '!')))
+        if (config_virtdomains && (p = strchr(name, INT_DOMAINSEP_CHAR)))
             domainlen = p - name + 1;
 
         strlcpy(buf, name, sizeof(buf));

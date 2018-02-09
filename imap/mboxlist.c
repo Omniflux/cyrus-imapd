@@ -3612,7 +3612,7 @@ EXPORTED int mboxlist_setquotas(const char *root,
     if (r != IMAP_QUOTAROOT_NONEXISTENT)
         goto done;
 
-    if (config_virtdomains && root[strlen(root)-1] == '!') {
+    if (config_virtdomains && root[strlen(root)-1] == INT_DOMAINSEP_CHAR) {
         /* domain quota */
     }
     else {

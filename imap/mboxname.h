@@ -49,6 +49,8 @@
 
 #define MAX_NAMESPACE_PREFIX 40
 
+#define INT_DOMAINSEP_STR    "\x1D"  /* group separator (GS) */
+#define INT_DOMAINSEP_CHAR   INT_DOMAINSEP_STR[0]
 #define INT_HIERSEP_STR      "\x1F"  /* unit separator (US) */
 #define INT_HIERSEP_CHAR     INT_HIERSEP_STR[0]
 #define INT_USER_PREFIX      "user" INT_HIERSEP_STR
