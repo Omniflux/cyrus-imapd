@@ -404,7 +404,7 @@ static int fuzzy_match(mbname_t *mbname)
 
     if (mbname_userid(mbname)) {
         char *name = mboxname_user_mbox(mbname_userid(mbname), NULL);
-        prefix = strconcat(name, ".", (char *)NULL);
+        prefix = strconcat(name, INT_HIERSEP_STR, (char *)NULL);
         free(name);
     }
     else if (mbname_domain(mbname)) {
