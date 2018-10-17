@@ -12688,7 +12688,7 @@ static void specialuse_flags(const mbentry_t *mbentry, struct buf *attrib,
         if (isxlist) buf_init_ro_cstr(attrib, "\\Inbox");
     }
     /* subdir */
-    else if (mbentry->name[inboxlen] == '.') {
+    else if (mbentry->name[inboxlen] == INT_HIERSEP_CHAR) {
         /* check if there's a special use flag set */
         annotatemore_lookup(mbentry->name, "/specialuse", imapd_userid, attrib);
     }

@@ -1868,11 +1868,12 @@ EXPORTED void mboxname_todeleted(const char *name, char *result, int withtime)
     if (withtime) {
         struct timeval tv;
         gettimeofday( &tv, NULL );
-        snprintf(result+domainlen, MAX_MAILBOX_BUFFER-domainlen, "%s.%s.%X",
-                 deletedprefix, name+domainlen, (unsigned) tv.tv_sec);
+        snprintf(result+domainlen, MAX_MAILBOX_BUFFER-domainlen, "%s%c%s%c%X",
+                 deletedprefix, INT_HIERSEP_CHAR,
+                 name+domainlen, INT_HIERSEP_CHAR, (unsigned) tv.tv_sec);
     } else {
-        snprintf(result+domainlen, MAX_MAILBOX_BUFFER-domainlen, "%s.%s",
-                 deletedprefix, name+domainlen);
+        snprintf(result+domainlen, MAX_MAILBOX_BUFFER-domainlen, "%s%c%s",
+                 deletedprefix, INT_HIERSEP_CHAR, name+domainlen);
     }
 }
 

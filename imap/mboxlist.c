@@ -3270,27 +3270,13 @@ static int mboxlist_do_find(struct find_rock *rock, const strarray_t *patterns)
     if (userid && (!(p = strchr(userid, rock->namespace->hier_sep)) ||
         ((p - userid) > (int)userlen)) &&
         strlen(userid)+7 < MAX_MAILBOX_BUFFER) {
-        char *t, *tmpuser = NULL;
-        const char *inboxuser;
 
         if (domainlen)
             snprintf(inbox, sizeof(inbox), "%s!", userid+userlen+1);
-        if (rock->namespace->hier_sep == '/' && (p = strchr(userid, '.'))) {
-            tmpuser = xmalloc(userlen);
-            memcpy(tmpuser, userid, userlen);
-            t = tmpuser + (p - userid);
-            while(t < (tmpuser + userlen)) {
-                if (*t == '.')
-                    *t = '^';
-                t++;
-            }
-            inboxuser = tmpuser;
-        } else
-            inboxuser = userid;
+
         snprintf(inbox+domainlen, sizeof(inbox)-domainlen,
                  "%s%.*s%cINBOX%c", INT_USER_PREFIX,
-                 (int)userlen, inboxuser, INT_HIERSEP_CHAR, INT_HIERSEP_CHAR);
-        free(tmpuser);
+                 (int)userlen, userid, INT_HIERSEP_CHAR, INT_HIERSEP_CHAR);
         inboxlen = strlen(inbox) - 7;
     }
     else {
@@ -3309,10 +3295,7 @@ static int mboxlist_do_find(struct find_rock *rock, const strarray_t *patterns)
             const char *pat = strarray_nth(patterns, i);
             if (pat[prefixlen] != c) break;
         }
-        if (rock->namespace->hier_sep == '/') {
-            if (c == '/') c = '.';
-            else if (c == '.') c = DOTCHAR;
-        }
+        if (c == rock->namespace->hier_sep) c = INT_HIERSEP_CHAR;
         if (i < patterns->count) break;
         if (c == '*' || c == '%' || c == '?') break;
         commonpat[prefixlen] = c;
@@ -3392,11 +3375,11 @@ static int mboxlist_do_find(struct find_rock *rock, const strarray_t *patterns)
         if (!strncmp(rock->namespace->prefix[NAMESPACE_USER], commonpat, MIN(len, prefixlen))) {
             if (prefixlen <= len) {
                 /* we match all users */
-                strlcpy(domainpat+domainlen, "user.", sizeof(domainpat)-domainlen);
+                strlcpy(domainpat+domainlen, INT_USER_PREFIX, sizeof(domainpat)-domainlen);
             }
             else {
                 /* just those in this prefix */
-                strlcpy(domainpat+domainlen, "user.", sizeof(domainpat)-domainlen);
+                strlcpy(domainpat+domainlen, INT_USER_PREFIX, sizeof(domainpat)-domainlen);
                 strlcpy(domainpat+domainlen+5, commonpat+len+1, sizeof(domainpat)-domainlen-5);
             }
 
