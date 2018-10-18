@@ -1766,7 +1766,8 @@ int propfind_collectionname(const xmlChar *name, xmlNsPtr ns,
         /* Special case empty displayname -- use last segment of path */
         xmlNodePtr node = xml_add_prop(HTTP_OK, fctx->ns[NS_DAV],
                                        &propstat[PROPSTAT_OK], name, ns, NULL, 0);
-        buf_setcstr(&fctx->buf, strrchr(fctx->mbentry->name, '.') + 1);
+        buf_setcstr(&fctx->buf,
+                    strrchr(fctx->mbentry->name, INT_HIERSEP_CHAR) + 1);
         xmlAddChild(node, xmlNewCDataBlock(fctx->root->doc,
                                            BAD_CAST buf_cstring(&fctx->buf),
                                            buf_len(&fctx->buf)));
@@ -4116,12 +4117,12 @@ static int dav_move_collection(struct transaction_t *txn,
     nmlen = strlen(newmailboxname);
     if (omlen < nmlen) {
         if (!strncmp(oldmailboxname, newmailboxname, omlen) &&
-            newmailboxname[omlen] == '.') {
+            newmailboxname[omlen] == INT_HIERSEP_CHAR) {
             recursive = 0;
         }
     } else {
         if (!strncmp(oldmailboxname, newmailboxname, nmlen) &&
-            oldmailboxname[nmlen] == '.') {
+            oldmailboxname[nmlen] == INT_HIERSEP_CHAR) {
             recursive = 0;
         }
     }
@@ -4162,7 +4163,7 @@ static int dav_move_collection(struct transaction_t *txn,
             char nmbn[MAX_MAILBOX_BUFFER];
 
             strcpy(nmbn, newmailboxname);
-            strcat(nmbn, ".");
+            strcat(nmbn, INT_HIERSEP_STR);
 
             r = mboxlist_allmbox(nmbn, remove_collection, NULL, 0);
         }
@@ -4187,11 +4188,11 @@ static int dav_move_collection(struct transaction_t *txn,
                                    dest_tgt->namespace->prefix, NULL, {0} };
 
         strcpy(ombn, oldmailboxname);
-        strcat(ombn, ".");
+        strcat(ombn, INT_HIERSEP_STR);
 
         /* Setup the rock */
         buf_setcstr(&mrock.newname, newmailboxname);
-        buf_putc(&mrock.newname, '.');
+        buf_putc(&mrock.newname, INT_HIERSEP_CHAR);
 
         r = mboxlist_allmbox(ombn, move_collection, &mrock, 0);
         buf_free(&mrock.newname);
@@ -5684,7 +5685,7 @@ int propfind_by_collection(const mbentry_t *mbentry, void *rock)
     /* We only match known types */
     if (!(mbentry->mbtype & fctx->req_tgt->namespace->mboxtype)) goto done;
 
-    p = strrchr(mboxname, '.');
+    p = strrchr(mboxname, INT_HIERSEP_CHAR);
     if (!p) goto done;
     p++; /* skip dot */
 
@@ -5692,7 +5693,7 @@ int propfind_by_collection(const mbentry_t *mbentry, void *rock)
     case URL_NS_DRIVE:
         if (fctx->req_tgt->flags == TGT_DRIVE_USER) {
             /* Special case of listing users with DAV #drives */
-            p = strchr(mboxname+5, '.') + 1;  /* skip "user.XXX." */
+            p = strchr(mboxname+5, INT_HIERSEP_CHAR) + 1;  /* skip "user.XXX." */
             if (strcmp(p, fctx->req_tgt->mboxprefix)) goto done;
         }
         else if (p - mboxname > 1 + (int) strlen(fctx->req_tgt->mbentry->name)) {
