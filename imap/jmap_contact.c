@@ -389,7 +389,8 @@ static int getgroups_cb(void *rock, struct carddav_data *cdata)
     json_object_set_new(obj, "id", json_string(cdata->vcard_uid));
 
     json_object_set_new(obj, "addressbookId",
-                        json_string(strrchr(cdata->dav.mailbox, '.')+1));
+                        json_string(strrchr(cdata->dav.mailbox,
+                                            INT_HIERSEP_CHAR)+1));
 
     json_t *contactids = json_pack("[]");
     json_t *otherids = json_pack("{}");
@@ -1230,7 +1231,8 @@ static json_t *jmap_contact_from_vcard(struct vparse_card *card,
     json_object_set_new(obj, "id", json_string(cdata->vcard_uid));
 
     json_object_set_new(obj, "addressbookId",
-                        json_string(strrchr(cdata->dav.mailbox, '.')+1));
+                        json_string(strrchr(cdata->dav.mailbox,
+                                            INT_HIERSEP_CHAR)+1));
 
     if (_wantprop(props, "isFlagged")) {
         json_object_set_new(obj, "isFlagged",

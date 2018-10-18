@@ -1160,11 +1160,12 @@ HIDDEN char *jmap_xhref(const char *mboxname, const char *resource)
 
     if (strchr(userid, '@') || !httpd_extradomain) {
         buf_printf(&buf, "%s/%s/%s/%s", prefix, USER_COLLECTION_PREFIX,
-                   userid, strrchr(mboxname, '.')+1);
+                   userid, strrchr(mboxname, INT_HIERSEP_CHAR)+1);
     }
     else {
         buf_printf(&buf, "%s/%s/%s@%s/%s", prefix, USER_COLLECTION_PREFIX,
-                   userid, httpd_extradomain, strrchr(mboxname, '.')+1);
+                   userid, httpd_extradomain,
+                   strrchr(mboxname, INT_HIERSEP_CHAR)+1);
     }
     if (resource)
         buf_printf(&buf, "/%s", resource);
