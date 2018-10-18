@@ -262,7 +262,7 @@ static int index_one(const char *name, int blocking)
                 break;
             }
 
-            p = strrchr(buf, '.');              /* find parent mailbox */
+            p = strrchr(buf, INT_HIERSEP_CHAR); /* find parent mailbox */
 
             if (p && (p - buf > domainlen))     /* don't split subdomain */
                 *p = '\0';
@@ -739,7 +739,10 @@ static int do_audit(const strarray_t *mboxnames)
             usleep(sleepmicroseconds);
 
         if (bv_count(&unindexed)) {
-            printf("Unindexed message(s) in %s: ", mboxname);
+            char *extname = mboxname_to_external(mboxname, &squat_namespace, NULL);
+            printf("Unindexed message(s) in %s: ", extname);
+            free(extname);
+
             int uid;
             for (uid = bv_next_set(&unindexed, 0);
                  uid != -1;
