@@ -543,8 +543,8 @@ static int do_reconstruct(struct findall_data *data, void *rock)
 
             /* ok, we have a real mailbox directory */
             char buf[MAX_MAILBOX_NAME];
-            snprintf(buf, MAX_MAILBOX_NAME, "%s.%s",
-                     name, dirent->d_name);
+            snprintf(buf, MAX_MAILBOX_NAME, "%s%c%s",
+                     name, INT_HIERSEP_CHAR, dirent->d_name);
 
             /* does fnamebuf exist as a mailbox in mboxlist? */
             do {
