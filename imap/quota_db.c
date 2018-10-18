@@ -634,7 +634,7 @@ EXPORTED int quota_findroot(char *ret, size_t retlen, const char *name)
     tail = mbox + strlen(mbox);
 
     while (cyrusdb_fetch(qdb, ret, strlen(ret), NULL, NULL, NULL)) {
-        tail = strrchr(mbox, '.');
+        tail = strrchr(mbox, INT_HIERSEP_CHAR);
         if (!tail) break;
         *tail = '\0';
     }

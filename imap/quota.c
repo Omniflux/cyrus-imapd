@@ -394,7 +394,10 @@ int buildquotalist(char *domain, char **roots, int nroots, int isuser)
             free(res);
         }
         else {
-            strlcpy(tail, roots[i], sizeof(buf) - domainlen);
+            char *intname =
+                mboxname_from_external(roots[i], &quota_namespace, NULL);
+            strlcpy(tail, intname, sizeof(buf) - domainlen);
+            free(intname);
         }
         /* XXX - namespace fixes here */
         r = quota_foreach(buf, fixquota_addroot, buf, NULL);
@@ -645,7 +648,10 @@ int fixquota_dopass(char *domain, char **roots, int nroots,
             free(inbox);
         }
         else {
-            strlcpy(tail, roots[i], sizeof(buf) - domainlen);
+            char *intname =
+                mboxname_from_external(roots[i], &quota_namespace, NULL);
+            strlcpy(tail, intname, sizeof(buf) - domainlen);
+            free(intname);
             r = mboxlist_allmbox(buf, cb, buf, /*flags*/0);
         }
         if (r) {

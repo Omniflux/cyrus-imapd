@@ -132,7 +132,7 @@ static int abort_txn(struct dbengine *db __attribute__((unused)), struct txn *ti
 static int compar_qr(const void *v1, const void *v2);
 static int compar_qr_mbox(const void *v1, const void *v2);
 
-/* hash the prefix - either with or without 'user.' part */
+/* hash the prefix - either with or without "user\x1F" part */
 static char name_to_hashchar(const char *name, int isprefix)
 {
     int config_fulldirhash = libcyrus_config_getswitch(CYRUSOPT_FULLDIRHASH);
@@ -142,7 +142,7 @@ static char name_to_hashchar(const char *name, int isprefix)
     /* you can't actually prefix with a fulldirhash character! (Bug 3735) */
     if (config_fulldirhash && isprefix) return '\0';
 
-    idx = strchr(name, '.'); /* skip past user. */
+    idx = strchr(name, 0x1F); /* skip past "user\x1F" */
     if (idx == NULL) {
         idx = name;
     } else {
