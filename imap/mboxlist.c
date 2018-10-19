@@ -2975,11 +2975,12 @@ EXPORTED int mboxlist_mboxtree(const char *mboxname,
 
     if ((flags & MBOXTREE_DELETED)) {
         struct buf buf = BUF_INITIALIZER;
-        const char *p = strchr(mboxname, '!');
+        const char *p = strchr(mboxname, INT_DOMAINSEP_CHAR);
         const char *dp = config_getstring(IMAPOPT_DELETEDPREFIX);
         if (p) {
-            buf_printf(&buf, "%.*s!%s%c%s",
-                       (int)(p-mboxname), mboxname, dp, INT_HIERSEP_CHAR, p+1);
+            buf_printf(&buf, "%.*s%c%s%c%s",
+                       (int)(p-mboxname), mboxname, INT_DOMAINSEP_CHAR,
+                       dp, INT_HIERSEP_CHAR, p+1);
         }
         else {
             buf_printf(&buf, "%s%c%s", dp, INT_HIERSEP_CHAR, mboxname);
