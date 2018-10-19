@@ -3261,7 +3261,7 @@ static int mboxlist_do_find(struct find_rock *rock, const strarray_t *patterns)
     if (config_virtdomains && userid && (p = strchr(userid, '@'))) {
         userlen = p - userid;
         domainlen = strlen(p); /* includes separator */
-        snprintf(domainpat, sizeof(domainpat), "%s!", p+1);
+        snprintf(domainpat, sizeof(domainpat), "%s%c", p+1, INT_DOMAINSEP_CHAR);
     }
     else
         domainpat[0] = '\0';
@@ -3271,8 +3271,10 @@ static int mboxlist_do_find(struct find_rock *rock, const strarray_t *patterns)
         ((p - userid) > (int)userlen)) &&
         strlen(userid)+7 < MAX_MAILBOX_BUFFER) {
 
-        if (domainlen)
-            snprintf(inbox, sizeof(inbox), "%s!", userid+userlen+1);
+        if (domainlen) {
+            snprintf(inbox, sizeof(inbox),
+                     "%s%c", userid+userlen+1, INT_DOMAINSEP_CHAR);
+        }
 
         snprintf(inbox+domainlen, sizeof(inbox)-domainlen,
                  "%s%.*s%cINBOX%c", INT_USER_PREFIX,
