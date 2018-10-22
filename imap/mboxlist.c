@@ -87,6 +87,9 @@
 #define DB config_mboxlist_db
 #define SUBDB config_subscription_db
 
+#define KEY_TYPE_NAME 'N'
+#define KEY_TYPE_ID   'I'
+
 cyrus_acl_canonproc_t mboxlist_ensureOwnerRights;
 
 static struct db *mbdb;
@@ -269,7 +272,8 @@ EXPORTED char *mbentry_datapath(const struct mboxlist_entry *mbentry, uint32_t u
 
 static void mboxlist_name_to_key(const char *name, size_t len, struct buf *key)
 {
-    buf_setcstr(key, "N");
+    buf_reset(key);
+    buf_putc(key, KEY_TYPE_NAME);
     buf_appendmap(key, name, len);
 }
 
@@ -280,7 +284,8 @@ static void mboxlist_name_from_key(const char *key, size_t len, struct buf *name
 
 static void mboxlist_id_to_key(const char *id, struct buf *key)
 {
-    buf_setcstr(key, "I");
+    buf_reset(key);
+    buf_putc(key, KEY_TYPE_ID);
     buf_appendcstr(key, id);
 }
 
@@ -2856,8 +2861,8 @@ static int find_p(void *rockp,
     struct buf intname = BUF_INITIALIZER;
     int i;
 
-    /* skip any $RACL or future $ space keys */
-    if (key[0] == '$') return 0;
+    /* skip any non-name keys */
+    if (key[0] != KEY_TYPE_NAME) return 0;
 
     mboxlist_name_from_key(key, keylen, &intname);
 
@@ -3036,7 +3041,7 @@ static int allmbox_p(void *rock,
     int r;
 
     /* skip any non-name keys */
-    if (!(keylen && key[0] == 'N')) return 0;
+    if (!(keylen && key[0] == KEY_TYPE_NAME)) return 0;
 
     /* free previous record */
     mboxlist_entry_free(&mbrock->mbentry);
