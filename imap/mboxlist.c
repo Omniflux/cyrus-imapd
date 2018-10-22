@@ -89,6 +89,7 @@
 
 #define KEY_TYPE_NAME 'N'
 #define KEY_TYPE_ID   'I'
+#define KEY_TYPE_RACL 'R'
 
 cyrus_acl_canonproc_t mboxlist_ensureOwnerRights;
 
@@ -727,17 +728,21 @@ HIDDEN int mboxlist_findstage(const char *name, char *stagedir, size_t sd_len)
     return 0;
 }
 
-static void mboxlist_racl_key(int isuser, const char *keyuser, const char *mbname, struct buf *buf)
+static void mboxlist_racl_key(int isuser, const char *keyuser,
+                              const char *mbname, struct buf *buf)
 {
-    buf_setcstr(buf, "$RACL$");
-    buf_putc(buf, isuser ? 'U' : 'S');
-    buf_putc(buf, '$');
-    if (keyuser) {
-        buf_appendcstr(buf, keyuser);
+    buf_reset(buf);
+    buf_putc(buf, KEY_TYPE_RACL);
+    if (keyuser || mbname) {
+        buf_putc(buf, isuser ? 'U' : 'S');
         buf_putc(buf, '$');
-    }
-    if (mbname) {
-        buf_appendcstr(buf, mbname);
+        if (keyuser) {
+            buf_appendcstr(buf, keyuser);
+            buf_putc(buf, '$');
+        }
+        if (mbname) {
+            buf_appendcstr(buf, mbname);
+        }
     }
 }
 
@@ -865,15 +870,18 @@ static int mboxlist_update_id(const char *id,
 static int mboxlist_update_entry(const char *name,
                                  const mbentry_t *mbentry, struct txn **txn)
 {
+    struct buf key = BUF_INITIALIZER;
     mbentry_t *old = NULL;
     int r = 0;
 
     mboxlist_mylookup(name, &old, txn, 0); // ignore errors, it will be NULL
 
-    if (!cyrusdb_fetch(mbdb, "$RACL", 5, NULL, NULL, txn)) {
+    mboxlist_racl_key(0, NULL, NULL, &key);
+    if (!cyrusdb_fetch(mbdb, buf_base(&key), buf_len(&key), NULL, NULL, txn)) {
         r = mboxlist_update_racl(name, old, mbentry, txn);
         /* XXX return value here is discarded? */
     }
+    buf_free(&key);
 
     r = mboxlist_update_name(name, mbentry, txn);
     if (!r) {
@@ -3150,16 +3158,21 @@ static int racls_add_cb(const mbentry_t *mbentry, void *rock)
 
 EXPORTED int mboxlist_set_racls(int enabled)
 {
+    struct buf key = BUF_INITIALIZER;
     struct txn *tid = NULL;
     int r = 0;
-    int now = !cyrusdb_fetch(mbdb, "$RACL", 5, NULL, NULL, &tid);
+    int now;
+
+    mboxlist_racl_key(0, NULL, NULL, &key);
+    now = !cyrusdb_fetch(mbdb, buf_base(&key), buf_len(&key), NULL, NULL, &tid);
 
     init_internal();
 
     if (now && !enabled) {
         syslog(LOG_NOTICE, "removing reverse acl support");
         /* remove */
-        r = cyrusdb_foreach(mbdb, "$RACL", 5, NULL, racls_del_cb, &tid, &tid);
+        r = cyrusdb_foreach(mbdb, buf_base(&key), buf_len(&key),
+                            NULL, racls_del_cb, &tid, &tid);
     }
     else if (enabled && !now) {
         /* add */
@@ -3171,7 +3184,7 @@ EXPORTED int mboxlist_set_racls(int enabled)
             syslog(LOG_ERR, "ERROR: failed to add reverse acl support %s", error_message(r));
         }
         mboxlist_entry_free(&mbrock.mbentry);
-        if (!r) r = cyrusdb_store(mbdb, "$RACL", 5, "", 0, &tid);
+        if (!r) r = cyrusdb_store(mbdb, buf_base(&key), buf_len(&key), "", 0, &tid);
     }
 
     if (r)
@@ -3179,6 +3192,7 @@ EXPORTED int mboxlist_set_racls(int enabled)
     else
         cyrusdb_commit(mbdb, tid);
 
+    buf_free(&key);
     return r;
 }
 
@@ -3338,7 +3352,9 @@ static int mboxlist_find_category(struct find_rock *rock, const char *prefix, si
 
     init_internal();
 
-    if (!rock->issubs && !rock->isadmin && !cyrusdb_fetch(rock->db, "$RACL", 5, NULL, NULL, NULL)) {
+    mboxlist_racl_key(0, NULL, NULL, &key);
+    if (!rock->issubs && !rock->isadmin &&
+        !cyrusdb_fetch(rock->db, buf_base(&key), buf_len(&key), NULL, NULL, NULL)) {
         /* we're using reverse ACLs */
         strarray_t matches = STRARRAY_INITIALIZER;
         int i;
