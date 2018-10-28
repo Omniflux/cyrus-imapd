@@ -1248,7 +1248,8 @@ static int parseentry_cb(int type, struct dlistsax_data *d)
         else {
             const char *key = buf_cstring(&d->kbuf);
             if (!strcmp(key, "I")) {
-                rock->mailbox->uniqueid = xstrdupnull(d->data);
+                if (!rock->mailbox->uniqueid)
+                    rock->mailbox->uniqueid = xstrdupnull(d->data);
             }
             else if (!strcmp(key, "N")) {
                 if (!rock->mailbox->name)
@@ -5507,6 +5508,7 @@ HIDDEN int mailbox_rename_copy(struct mailbox *oldmailbox,
     struct conversations_state *oldcstate = NULL;
     struct conversations_state *newcstate = NULL;
     char *newquotaroot = NULL;
+    char *newuniqueid;
 
     assert(mailbox_index_islocked(oldmailbox, 1));
 
@@ -5529,7 +5531,6 @@ HIDDEN int mailbox_rename_copy(struct mailbox *oldmailbox,
                        oldmailbox->i.options, uidvalidity,
                        oldmailbox->i.createdmodseq,
                        oldmailbox->i.highestmodseq, &newmailbox);
-
     if (r) return r;
 
     /* Check quota if necessary */
@@ -5545,21 +5546,28 @@ HIDDEN int mailbox_rename_copy(struct mailbox *oldmailbox,
     }
     newquotaroot = xstrdupnull(newmailbox->quotaroot);
 
-    /* XXX  - calculate new uniqueid somehow */
-    r = mailbox_copy_files(oldmailbox, newpartition, newname, NULL);
+    r = mailbox_copy_files(oldmailbox, newpartition,
+                           newname, newmailbox->uniqueid);
     if (r) goto fail;
 
     /* Re-open index file  */
     r = mailbox_open_index(newmailbox);
     if (r) goto fail;
 
+    /* cyrus.header has been copied with old uniqueid.
+       make a copy of new uniqueid so we can reset it */
+    newuniqueid = xstrdup(newmailbox->uniqueid);
+
     /* Re-lock index */
     r = mailbox_lock_index_internal(newmailbox, LOCK_EXCLUSIVE);
 
+    /* Reset new uniqueid */
+    free(newmailbox->uniqueid);
+    newmailbox->uniqueid = newuniqueid;
+    newmailbox->header_dirty = 1;
+
     /* INBOX rename - change uniqueid */
     if (userid) {
-        mailbox_make_uniqueid(newmailbox);
-
         r = seen_copy(userid, oldmailbox, newmailbox);
         if (r) goto fail;
     }
