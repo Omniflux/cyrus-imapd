@@ -959,7 +959,7 @@ static int mboxlist_update_entry(const char *name,
     }
     else {
         r = cyrusdb_delete(mbdb, buf_base(&key), buf_len(&key), txn, /*force*/1);
-        if (!r && old->uniqueid) {
+        if (!r && old->uniqueid && !mboxname_isdeletedmailbox(name, NULL)) {
             mboxlist_id_to_key(old->uniqueid, &key);
             r = cyrusdb_delete(mbdb, buf_base(&key), buf_len(&key),
                                txn, /*force*/1);
