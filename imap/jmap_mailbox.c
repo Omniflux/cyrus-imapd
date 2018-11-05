@@ -221,31 +221,15 @@ static enum shared_mbox_type _shared_mbox_type(struct shared_mboxes *sm,
     return _SHAREDMBOX_HIDDEN;
 }
 
-struct _mbentry_by_uniqueid_rock {
-    const char *uniqueid;
-    mbentry_t **mbentry;
-};
-
-static int _mbentry_by_uniqueid_cb(const mbentry_t *mbentry, void *rock)
-{
-    struct _mbentry_by_uniqueid_rock *data = rock;
-    if (strcmp(mbentry->uniqueid, data->uniqueid))
-        return 0;
-    *(data->mbentry) = mboxlist_entry_copy(mbentry);
-    return IMAP_OK_COMPLETED;
-}
-
-static mbentry_t *_mbentry_by_uniqueid(jmap_req_t *req, const char *id,
+static mbentry_t *_mbentry_by_uniqueid(jmap_req_t *req __attribute__((unused)),
+                                       const char *id,
                                        int include_tombstones)
 {
     mbentry_t *mbentry = NULL;
 
-    struct _mbentry_by_uniqueid_rock rock = { id, &mbentry };
-    int flags = MBOXTREE_INTERMEDIATES;
-    if (include_tombstones) flags |= MBOXTREE_TOMBSTONES|MBOXTREE_DELETED;
-    int r = mboxlist_usermboxtree(req->accountid, req->authstate,
-                                  _mbentry_by_uniqueid_cb, &rock, flags);
-    if (r != IMAP_OK_COMPLETED && mbentry) {
+    int r = mboxlist_lookup_by_uniqueid(id, &mbentry, NULL);
+    if (mbentry &&
+        (r || (!include_tombstones && (mbentry->mbtype & MBTYPE_DELETED)))) {
         mboxlist_entry_free(&mbentry);
         mbentry = NULL;
     }
