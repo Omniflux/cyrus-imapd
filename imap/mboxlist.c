@@ -216,13 +216,9 @@ EXPORTED const char *mboxlist_mbtype_to_string(uint32_t mbtype)
     return buf_cstring(&buf);
 }
 
-static char *mboxlist_entry_cstring(const char *name, const mbentry_t *mbentry)
+static struct dlist *mboxlist_entry_dlist(const mbentry_t *mbentry)
 {
-    struct buf buf = BUF_INITIALIZER;
-    struct dlist *dl = dlist_newkvlist(NULL, name);
-
-    if (mbentry->acl)
-        _write_acl(dl, mbentry->acl);
+    struct dlist *dl = dlist_newkvlist(NULL, mbentry->name);
 
     if (mbentry->uniqueid)
         dlist_setatom(dl, "I", mbentry->uniqueid);
@@ -247,13 +243,10 @@ static char *mboxlist_entry_cstring(const char *name, const mbentry_t *mbentry)
 
     dlist_setdate(dl, "M", time(NULL));
 
-    dlist_setatom(dl, "N", name);
+    if (mbentry->acl)
+        _write_acl(dl, mbentry->acl);
 
-    dlist_printbuf(dl, 0, &buf);
-
-    dlist_free(&dl);
-
-    return buf_release(&buf);
+    return dl;
 }
 
 EXPORTED char *mbentry_metapath(const struct mboxlist_entry *mbentry, int metatype, int isnew)
@@ -890,15 +883,29 @@ static int mboxlist_update_entry(const char *name,
     mboxlist_name_to_key(name, strlen(name), &key);
 
     if (mbentry) {
-        char *mboxent = mboxlist_entry_cstring(name, mbentry);
+        /* Create N record value */
+        struct dlist *dl = mboxlist_entry_dlist(mbentry);
+        struct buf mboxent = BUF_INITIALIZER;
+
+        dlist_printbuf(dl, 0, &mboxent);
         r = cyrusdb_store(mbdb, buf_base(&key), buf_len(&key),
-                          mboxent, strlen(mboxent), txn);
+                          buf_cstring(&mboxent), buf_len(&mboxent), txn);
         if (!r && mbentry->uniqueid && !(old && (old->mbtype & MBTYPE_DELETED))) {
+            /* Remove I field from N record value */
+            struct dlist *id = dlist_pop(dl);
+            dlist_free(&id);
+
+            /* Add N field for I record value */
+            dlist_push(dl, dlist_setatom(NULL, "N", name));
+
+            buf_reset(&mboxent);
+            dlist_printbuf(dl, 0, &mboxent);
             mboxlist_id_to_key(mbentry->uniqueid, &key);
             r = cyrusdb_store(mbdb, buf_base(&key), buf_len(&key),
-                              mboxent, strlen(mboxent), txn);
+                              buf_cstring(&mboxent), buf_len(&mboxent), txn);
         }
-        free(mboxent);
+        dlist_free(&dl);
+        buf_free(&mboxent);
 
         if (!r && config_auditlog) {
             /* XXX is there a difference between "" and NULL? */
