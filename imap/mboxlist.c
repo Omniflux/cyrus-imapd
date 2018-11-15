@@ -152,6 +152,8 @@ EXPORTED void mboxlist_entry_free(mbentry_t **mbentryptr)
 
     free(mbentry->legacy_specialuse);
 
+    ptrarray_fini(&mbentry->synonyms);
+
     free(mbentry);
 
     *mbentryptr = NULL;
@@ -385,20 +387,26 @@ struct parseentry_rock {
 static int parseentry_cb(int type, struct dlistsax_data *d)
 {
     struct parseentry_rock *rock = (struct parseentry_rock *)d->rock;
+    const char *key = buf_cstring(&d->kbuf);
 
     switch(type) {
+    case DLISTSAX_LISTSTART:
+        if (!strcmp(key, "Y")) rock->doingsyns = 1;
+        break;
+    case DLISTSAX_LISTEND:
+        if (rock->doingsyns) rock->doingsyns = 0;
+        break;
     case DLISTSAX_KVLISTSTART:
-        if (!strcmp(buf_cstring(&d->kbuf), "A")) {
+        if (!strcmp(key, "A")) {
             rock->doingacl = 1;
         }
-        else if (!strcmp(buf_cstring(&d->kbuf), "Y")) {
-            rock->doingsyns = 1;
-            rock->mbentry->synonyms = dlist_newkvlist(NULL, "Y");
+        else if (rock->doingsyns) {
+            ptrarray_append(&rock->mbentry->synonyms,
+                            xzmalloc(sizeof(synonym_t)));
         }
         break;
     case DLISTSAX_KVLISTEND:
         if (rock->doingacl) rock->doingacl = 0;
-        else if (rock->doingsyns) rock->doingsyns = 0;
         break;
     case DLISTSAX_STRING:
         if (rock->doingacl) {
@@ -408,11 +416,19 @@ static int parseentry_cb(int type, struct dlistsax_data *d)
             buf_putc(rock->aclbuf, '\t');
         }
         else if (rock->doingsyns) {
-            dlist_setatom(rock->mbentry->synonyms,
-                          buf_cstring(&d->kbuf), d->data);
+            synonym_t *syn = ptrarray_tail(&rock->mbentry->synonyms);
+
+            if (!strcmp(key, "F")) {
+                syn->foldermodseq = atoll(d->data);
+            }
+            else if (!strcmp(key, "M")) {
+                syn->mtime = atoi(d->data);
+            }
+            else if (!strcmp(key, "N")) {
+                xstrncpy(syn->name, d->data, MAX_MAILBOX_NAME);
+            }
         }
         else {
-            const char *key = buf_cstring(&d->kbuf);
             if (!strcmp(key, "C")) {
                 rock->mbentry->createdmodseq = atoll(d->data);
             }
@@ -875,6 +891,18 @@ static int mboxlist_update_racl(const char *name, const mbentry_t *oldmbentry, c
     return r;
 }
 
+static void add_synonym(struct dlist *synonyms,
+                        const char *name, time_t mtime, modseq_t foldermodseq)
+{
+    struct dlist *syn = dlist_newkvlist(NULL, "");
+
+    dlist_setatom(syn, "N", name);
+    dlist_setnum64(syn, "F", foldermodseq);
+    dlist_setdate(syn, "M", mtime);
+
+    dlist_push(synonyms, syn);
+}
+
 static int mboxlist_update_entry(const char *name,
                                  const mbentry_t *mbentry, struct txn **txn)
 {
@@ -903,7 +931,7 @@ static int mboxlist_update_entry(const char *name,
         if (!r && mbentry->uniqueid &&
             !(old && (old->mbtype & MBTYPE_DELETED) && (mbentry->mbtype & MBTYPE_DELETED))) {
             mbentry_t *oldid = NULL;
-            struct dlist *synonyms = NULL;
+            struct dlist *synonyms = dlist_newlist(NULL, "Y");
 
             /* Remove I field from N record value */
             struct dlist *id = dlist_pop(dl);
@@ -915,19 +943,25 @@ static int mboxlist_update_entry(const char *name,
             mboxlist_lookup_by_uniqueid(mbentry->uniqueid, &oldid, txn);
 
             if (oldid) {
-                synonyms = oldid->synonyms;
-                oldid->synonyms = NULL;
+                /* Existing mailbox */
+                int i;
+                for (i = 0; i < oldid->synonyms.count; i++) {
+                    synonym_t *syn = ptrarray_nth(&oldid->synonyms, i);
+                    add_synonym(synonyms,
+                                syn->name, syn->mtime, syn->foldermodseq);
+                    free(syn);
+                }
 
                 if (strcmp(name, oldid->name)) {
                     /* Renamed mailbox */
-                    dlist_setnum64(synonyms, name, mbentry->foldermodseq);
+                    add_synonym(synonyms,
+                                name, time(NULL), mbentry->foldermodseq);
                 }
                 mboxlist_entry_free(&oldid);
             }
             else {
                 /* New mailbox */
-                synonyms = dlist_newkvlist(NULL, "Y");
-                dlist_setnum64(synonyms, name, mbentry->foldermodseq);
+                add_synonym(synonyms, name, time(NULL), mbentry->foldermodseq);
             }
 
             /* Add Y field for I record value */
