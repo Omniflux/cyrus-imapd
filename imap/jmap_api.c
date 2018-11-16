@@ -134,6 +134,21 @@ HIDDEN int jmap_is_accessible(const mbentry_t *mbentry,
     return IMAP_OK_COMPLETED;
 }
 
+HIDDEN mbentry_t *jmap_mbentry_by_uniqueid(jmap_req_t *req __attribute__((unused)),
+                                           const char *id,
+                                           int include_tombstones)
+{
+    mbentry_t *mbentry = NULL;
+
+    int r = mboxlist_lookup_by_uniqueid(id, &mbentry, NULL);
+    if (mbentry &&
+        (r || (!include_tombstones && (mbentry->mbtype & MBTYPE_DELETED)))) {
+        mboxlist_entry_free(&mbentry);
+        mbentry = NULL;
+    }
+    return mbentry;
+}
+
 static json_t *extract_value(json_t *from, const char *path, ptrarray_t *refs);
 
 static json_t *extract_array_value(json_t *val, const char *idx,

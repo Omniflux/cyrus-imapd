@@ -174,6 +174,10 @@ extern int jmap_is_valid_id(const char *id);
 extern int  jmap_is_accessible(const mbentry_t *mbentry, void *rock);
 extern int  jmap_mboxlist(jmap_req_t *req, mboxlist_cb *proc, void *rock);
 
+/* fetch an mbentry by mailbox by uniqueid */
+extern mbentry_t *jmap_mbentry_by_uniqueid(jmap_req_t *req, const char *id,
+                                           int include_tombstones);
+
 /* Request-scoped cache of mailbox rights for authenticated user */
 
 extern int  jmap_myrights(jmap_req_t *req, const mbentry_t *mbentry);

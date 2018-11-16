@@ -187,36 +187,7 @@ typedef enum MsgType {
         MSG_IS_ROOT = 0,
         MSG_IS_ATTACHED = 1,
 } MsgType;
-
-struct _mbentry_by_uniqueid_rock {
-    const char *uniqueid;
-    mbentry_t **mbentry;
-};
-
-static int _mbentry_by_uniqueid_cb(const mbentry_t *mbentry, void *rock)
-{
-    struct _mbentry_by_uniqueid_rock *data = rock;
-    if (strcmp(mbentry->uniqueid, data->uniqueid))
-        return 0;
-    *(data->mbentry) = mboxlist_entry_copy(mbentry);
-    return IMAP_OK_COMPLETED;
-}
-
-static mbentry_t *_mbentry_by_uniqueid(jmap_req_t *req, const char *id)
-{
-    mbentry_t *mbentry = NULL;
-
-    struct _mbentry_by_uniqueid_rock rock = { id, &mbentry };
-    int r = mboxlist_usermboxtree(req->accountid, req->authstate,
-                                  _mbentry_by_uniqueid_cb, &rock,
-                                  MBOXTREE_INTERMEDIATES);
-    if (r != IMAP_OK_COMPLETED && mbentry) {
-        mboxlist_entry_free(&mbentry);
-        mbentry = NULL;
-    }
-    return mbentry;
-}
-
+    
 
 /*
  * Emails
@@ -1529,7 +1500,7 @@ static void _email_search_mbox(jmap_req_t *req, search_expr_t *parent,
 {
     search_expr_t *e;
     const char *s = json_string_value(mailbox);
-    mbentry_t *mbentry = _mbentry_by_uniqueid(req, s);
+    mbentry_t *mbentry = jmap_mbentry_by_uniqueid(req, s, /*tombstones*/0);
     if (!mbentry || !jmap_hasrights(req, mbentry, ACL_LOOKUP)) {
         mboxlist_entry_free(&mbentry);
         /* XXX - add a "never match" terminal */
@@ -1801,7 +1772,9 @@ static void _email_parse_filter(json_t *filter, struct jmap_parser *parser,
                 jmap_parser_invalid(parser, field);
                 continue;
             }
-            mbentry_t *mbentry = _mbentry_by_uniqueid(req, json_string_value(arg));
+            mbentry_t *mbentry = jmap_mbentry_by_uniqueid(req,
+                                                          json_string_value(arg),
+                                                          /*tombstones*/0);
             if (!mbentry || !jmap_hasrights(req, mbentry, ACL_LOOKUP)) {
                 jmap_parser_invalid(parser, field);
             }
@@ -1817,7 +1790,8 @@ static void _email_parse_filter(json_t *filter, struct jmap_parser *parser,
                     const char *s = json_string_value(val);
                     int is_valid = 0;
                     if (s) {
-                        mbentry_t *mbentry = _mbentry_by_uniqueid(req, s);
+                        mbentry_t *mbentry =
+                            jmap_mbentry_by_uniqueid(req, s, /*tombstones*/0);
                         is_valid = mbentry && jmap_hasrights(req, mbentry, ACL_LOOKUP);
                         mboxlist_entry_free(&mbentry);
                     }
@@ -5837,7 +5811,7 @@ static void _email_append(jmap_req_t *req,
             id = jmap_lookup_id(req, id + 1);
         }
         if (!id) continue;
-        mbentry_t *mbentry = _mbentry_by_uniqueid(req, id);
+        mbentry_t *mbentry = jmap_mbentry_by_uniqueid(req, id, /*tombstones*/0);
         if (!mbentry || !jmap_hasrights(req, mbentry, ACL_LOOKUP)) {
             r = IMAP_MAILBOX_NONEXISTENT;
             goto done;
@@ -8718,7 +8692,8 @@ static void _email_bulkupdate_open(jmap_req_t *req, struct email_bulkupdate *bul
         struct email_updateplan *plan = hash_lookup(mboxrec->mbox_id, &bulk->plans_by_mbox_id);
         if (!plan) {
             struct mailbox *mbox = NULL;
-            mbentry_t *mbentry = _mbentry_by_uniqueid(req, mboxrec->mbox_id);
+            mbentry_t *mbentry =
+                jmap_mbentry_by_uniqueid(req, mboxrec->mbox_id, /*tombstones*/0);
             int r = 0;
             if (mbentry && mbentry->mbtype & MBTYPE_INTERMEDIATE) {
                 r = mboxlist_promote_intermediary(mbentry->name);
@@ -8795,7 +8770,8 @@ static void _email_bulkupdate_open(jmap_req_t *req, struct email_bulkupdate *bul
                 continue;
             }
             struct mailbox *mbox = NULL;
-            mbentry_t *mbentry = _mbentry_by_uniqueid(req, mbox_id);
+            mbentry_t *mbentry =
+                jmap_mbentry_by_uniqueid(req, mbox_id, /*tombstones*/0);
             if (mbentry) {
                 int r = 0;
                 if (mbentry->mbtype & MBTYPE_INTERMEDIATE) {
@@ -9631,7 +9607,8 @@ static int jmap_email_import(jmap_req_t *req)
                     jmap_parser_invalid(&parser, s);
                     continue;
                 }
-                mbentry_t *mbentry = _mbentry_by_uniqueid(req, mboxid);
+                mbentry_t *mbentry =
+                    jmap_mbentry_by_uniqueid(req, mboxid, /*tombstones*/0);
                 if (!mbentry || !jmap_hasrights(req, mbentry, ACL_LOOKUP)) {
                     jmap_parser_invalid(&parser, s);
                 }

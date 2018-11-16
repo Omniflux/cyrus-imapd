@@ -221,21 +221,6 @@ static enum shared_mbox_type _shared_mbox_type(struct shared_mboxes *sm,
     return _SHAREDMBOX_HIDDEN;
 }
 
-static mbentry_t *_mbentry_by_uniqueid(jmap_req_t *req __attribute__((unused)),
-                                       const char *id,
-                                       int include_tombstones)
-{
-    mbentry_t *mbentry = NULL;
-
-    int r = mboxlist_lookup_by_uniqueid(id, &mbentry, NULL);
-    if (mbentry &&
-        (r || (!include_tombstones && (mbentry->mbtype & MBTYPE_DELETED)))) {
-        mboxlist_entry_free(&mbentry);
-        mbentry = NULL;
-    }
-    return mbentry;
-}
-
 struct _mbox_find_specialuse_rock {
     const char *use;
     const char *userid;
@@ -1879,7 +1864,7 @@ static void _mbox_create(jmap_req_t *req, struct mboxset_args *args,
     parent_id = args->is_toplevel ? mbinbox->uniqueid : parent_id;
 
     /* Check parent exists and has the proper ACL. */
-    mbparent = _mbentry_by_uniqueid(req, parent_id, /*tombstones*/0);
+    mbparent = jmap_mbentry_by_uniqueid(req, parent_id, /*tombstones*/0);
     if (!mbparent || !jmap_hasrights(req, mbparent, ACL_CREATE)) {
         jmap_parser_invalid(&parser, "parentId");
         goto done;
@@ -2009,7 +1994,7 @@ static void _mbox_update(jmap_req_t *req, struct mboxset_args *args,
     }
 
     /* Lookup current mailbox entry */
-    mbentry = _mbentry_by_uniqueid(req, args->mbox_id, /*tombstones*/0);
+    mbentry = jmap_mbentry_by_uniqueid(req, args->mbox_id, /*tombstones*/0);
     if (!mbentry || !jmap_hasrights(req, mbentry, ACL_LOOKUP)) {
         mboxlist_entry_free(&mbentry);
         result->err = json_pack("{s:s}", "type", "notFound");
@@ -2061,7 +2046,8 @@ static void _mbox_update(jmap_req_t *req, struct mboxset_args *args,
         /* Compare old parent with new parent. */
         char *newparentname = NULL;
 
-        mbentry_t *pmbentry = _mbentry_by_uniqueid(req, parent_id, /*tombstones*/0);
+        mbentry_t *pmbentry =
+            jmap_mbentry_by_uniqueid(req, parent_id, /*tombstones*/0);
         if (pmbentry && jmap_hasrights(req, pmbentry, ACL_LOOKUP)) {
             newparentname = xstrdup(pmbentry->name);
         }
@@ -2278,7 +2264,7 @@ static void _mbox_destroy(jmap_req_t *req, const char *mboxid, int remove_msgs,
     }
 
     /* Lookup mailbox by id. */
-    mbentry = _mbentry_by_uniqueid(req, mboxid, /*tombstones*/0);
+    mbentry = jmap_mbentry_by_uniqueid(req, mboxid, /*tombstones*/0);
     if (!mbentry) {
         result->err = json_pack("{s:s}", "type", "notFound");
         goto done;
@@ -2500,7 +2486,8 @@ static struct mboxset_ops *_mboxset_newops(jmap_req_t *req, struct mboxset *set)
         construct_hash_table(&parent_id_by_id, set->destroy.count + 1, 0);
         for (i = 0; i < strarray_size(&set->destroy); i++) {
             const char *mbox_id = strarray_nth(&set->destroy, i);
-            mbentry_t *mbentry = _mbentry_by_uniqueid(req, mbox_id, /*tombstones*/0);
+            mbentry_t *mbentry =
+                jmap_mbentry_by_uniqueid(req, mbox_id, /*tombstones*/0);
             if (!mbentry || !jmap_hasrights(req, mbentry, ACL_LOOKUP)) {
                 json_object_set_new(set->super.not_destroyed, mbox_id,
                         json_pack("{s:s}", "type", "notFound"));
