@@ -695,4 +695,6 @@ extern void mailbox_set_wait_cb(mailbox_wait_cb_t *cb, void *rock);
 
 extern struct dlist *mailbox_acl_to_dlist(const char *aclstr);
 
+extern int mailbox_changequotaroot(struct mailbox *mailbox, const char *root);
+
 #endif /* INCLUDED_MAILBOX_H */
