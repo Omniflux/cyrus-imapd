@@ -3456,7 +3456,7 @@ static int rename_cb(const char *mboxname __attribute__((unused)),
 }
 
 EXPORTED int annotate_rename_mailbox(struct mailbox *oldmailbox,
-                            struct mailbox *newmailbox)
+                                     struct mailbox *newmailbox, int copy)
 {
     /* rename one mailbox */
     char *olduserid = mboxname_to_userid(oldmailbox->name);
@@ -3480,7 +3480,7 @@ EXPORTED int annotate_rename_mailbox(struct mailbox *oldmailbox,
     /* copy here - delete will dispose of old records later */
     r = _annotate_rewrite(oldmailbox, 0, olduserid,
                           newmailbox, 0, newuserid,
-                         /*copy*/1);
+                          copy);
     if (r) goto done;
 
     r = annotate_commit(d);

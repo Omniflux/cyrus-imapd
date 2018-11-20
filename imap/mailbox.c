@@ -5576,7 +5576,7 @@ HIDDEN int mailbox_rename_copy(struct mailbox *oldmailbox,
      * amount, because we already counted that usage.  XXX horrible
      * hack */
     quota_t annotused = newmailbox->i.quota_annot_used;
-    r = annotate_rename_mailbox(oldmailbox, newmailbox);
+    r = annotate_rename_mailbox(oldmailbox, newmailbox, /*copy*/1);
     if (r) goto fail;
     newmailbox->i.quota_annot_used = annotused;
 

@@ -2183,8 +2183,7 @@ static int mailbox_rename_meta(struct mailbox *oldmailbox, const char *newname)
         /* copy any mailbox annotations */
         struct mailbox newmailbox = { .name = (char *) newname,
                                       .index_locktype = LOCK_EXCLUSIVE };
-        r = annotate_rename_mailbox(oldmailbox, &newmailbox);
-        if (!r) r = annotate_delete_mailbox(oldmailbox);
+        r = annotate_rename_mailbox(oldmailbox, &newmailbox, /*copy*/0);
     }
 
     if (!r && mailbox_has_conversations(oldmailbox)) {
