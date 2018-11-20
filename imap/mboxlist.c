@@ -2171,6 +2171,35 @@ EXPORTED int mboxlist_renametree(const char *oldname, const char *newname,
     return r;
 }
 
+static int mailbox_rename_meta(struct mailbox *oldmailbox, const char *newname)
+{
+    char quotaroot[MAX_MAILBOX_BUFFER];
+    int hasquota = quota_findroot(quotaroot, sizeof(quotaroot), newname);
+
+    /* Move any quota usage */
+    int r = mailbox_changequotaroot(oldmailbox, hasquota ? quotaroot: NULL);
+
+    if (!r) {
+        /* copy any mailbox annotations */
+        struct mailbox newmailbox = { .name = (char *) newname,
+                                      .index_locktype = LOCK_EXCLUSIVE };
+        r = annotate_rename_mailbox(oldmailbox, &newmailbox);
+        if (!r) r = annotate_delete_mailbox(oldmailbox);
+    }
+
+    if (!r && mailbox_has_conversations(oldmailbox)) {
+        struct conversations_state *oldcstate =
+            conversations_get_mbox(oldmailbox->name);
+
+        assert(oldcstate);
+
+        /* we can just rename within the same user */
+        r = conversations_rename_folder(oldcstate, oldmailbox->name, newname);
+    }
+
+    return r;
+}
+
 /*
  * Rename/move a single mailbox (recursive renames are handled at a
  * higher level).  This only supports local mailboxes.  Remote
@@ -2352,23 +2381,10 @@ EXPORTED int mboxlist_renamemailbox(const mbentry_t *mbentry,
         newmbentry->foldermodseq = newmailbox->i.highestmodseq;
     }
     else {
-        char quotaroot[MAX_MAILBOX_BUFFER];
-        int hasquota = quota_findroot(quotaroot, sizeof(quotaroot), newname);
+        /* Rename the mailbox metadata */
+        r = mailbox_rename_meta(oldmailbox, newname);
 
-        /* Move any quota usage */
-        r = mailbox_changequotaroot(oldmailbox, hasquota ? quotaroot: NULL);
         if (r) goto done;
-
-        if (mailbox_has_conversations(oldmailbox)) {
-            struct conversations_state *oldcstate =
-                conversations_get_mbox(oldname);
-
-            assert(oldcstate);
-
-            /* we can just rename within the same user */
-            r = conversations_rename_folder(oldcstate, oldname, newname);
-            if (r) goto done;
-        }
 
         /* rewrite entry with new name */
         newmbentry = mboxlist_entry_create();
